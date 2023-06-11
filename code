@@ -1,0 +1,87 @@
+library(shiny)
+library(DT)
+library(arules)
+library(shinythemes)
+library(ggplot2)
+
+load("CBB_MBB.RData")
+
+all_team_names <- sort(unique(CBB_MBB$TEAM))
+
+all_conf_names <- sort(unique(CBB_MBB$CONF))
+
+all_years <- sort(unique(CBB_MBB$YEAR))
+
+ui <- navbarPage("NCAA MBB (2013-2019)",
+                 theme = shinytheme('darkly'),
+                 tabPanel("Team Win Graph",
+                          sidebarLayout(
+                            sidebarPanel(
+                              selectInput("Team",
+                                        label = "Select Team",
+                                        choices = all_team_names,
+                                        selected = c("Tennessee"),
+                                        multiple = FALSE
+                                        ),
+                            ),
+                            mainPanel(
+                              plotOutput("Wins_Plot")
+                            )
+                          )
+                 ),
+                 tabPanel("Tournment Seeds",
+                          sidebarLayout(
+                            sidebarPanel(      
+                              sliderInput(inputId = "Seed",
+                                          label = "What seed should each team be?",
+                                          min = 1,
+                                          max = 16,
+                                          value = 1,
+                                          step = 1
+                              ),
+                              radioButtons(inputId = "Year",
+                                           label = "What year do you want the seeds from?",
+                                           choices = all_years
+                            )
+                              ),
+                            mainPanel(
+                              verbatimTextOutput("Seeding")
+                            )
+                          )
+                 ),
+                 
+                 
+          navbarMenu("More Data",
+                 tabPanel("Data Table",
+                          DT::dataTableOutput("table")
+                 ),
+                 tabPanel("Data Summary",
+                          verbatimTextOutput("summary")
+                 )
+          )
+)
+
+server <- function(input, output, session) {
+  output$Wins_Plot <- renderPlot({
+    ggplot(data=CBB_MBB[CBB_MBB$TEAM %in% input$Team,],
+                   aes(x=factor(YEAR), y=W)) +
+      geom_line(group=1) +
+      xlab("Year") +
+      ylab("W") +
+      ggtitle("Wins according to Year") 
+  })
+  output$Seeding <- renderPrint({
+    CBB_MBB$TEAM[which(CBB_MBB$SEED %in% input$Seed & CBB_MBB$YEAR %in% input$Year)]
+  })
+  
+  output$table <- DT::renderDataTable({
+    DT::datatable(CBB_MBB)
+  })
+  
+  output$summary <- renderPrint({
+    summary(CBB_MBB)
+  })
+}
+  
+
+shinyApp(ui, server)
